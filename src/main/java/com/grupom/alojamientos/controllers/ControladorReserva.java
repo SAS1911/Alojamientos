@@ -5,7 +5,6 @@ import com.grupom.alojamientos.services.ServicioReservas;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -27,7 +26,7 @@ public class ControladorReserva {
             @RequestParam String entrada,
             @RequestParam String salida) {
         
-        System.out.println("[CONTROLADOR-RESERVA] Solicitud de creación de reserva. Alojamiento: " + alojamientoid + ", Huésped: " + huespedId);
+        System.out.println("[CONTROLADOR-RESERVA] Solicitud de creación de reserva recibida.");
         
         Reserva nuevaReserva = servicioReservas.registrarReserva(
                 alojamientoid, huespedId, LocalDate.parse(entrada), LocalDate.parse(salida));
@@ -35,17 +34,7 @@ public class ControladorReserva {
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevaReserva);
     }
 
-    // CU-03: Cancelación de Reserva y evaluación de reembolso
-    @PostMapping("/{id}/cancelar")
-    public ResponseEntity<Void> cancelarReserva(@PathVariable Long id) {
-        System.out.println("[CONTROLADOR-RESERVA] Solicitud de cancelación para Reserva #" + id);
-        
-        servicioReservas.procesarCancelacion(id);
-        
-        return ResponseEntity.ok().build(); // HTTP 200 OK
-    }
-
-    // Devuelve todas las reservas para listarlas en la SPA
+    // Devuelve todas las reservas para listarlas en la SPA (Mantenido para la demo)
     @GetMapping("/listar")
     public ResponseEntity<List<Reserva>> listarReservas() {
         return ResponseEntity.ok(servicioReservas.obtenerTodas());
