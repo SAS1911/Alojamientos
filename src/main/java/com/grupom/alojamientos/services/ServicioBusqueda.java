@@ -2,71 +2,58 @@ package com.grupom.alojamientos.services;
 
 import com.grupom.alojamientos.entities.Alojamiento;
 import com.grupom.alojamientos.entities.CriterioBusqueda;
-import com.grupom.alojamientos.entities.Resena;
 import com.grupom.alojamientos.entities.ResultadoBusqueda;
-import com.grupom.alojamientos.repositories.AlojamientoRepository;
-import com.grupom.alojamientos.repositories.ResenaRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Service
 public class ServicioBusqueda {
 
-    private final AlojamientoRepository alojamientoRepository;
-    private final ResenaRepository resenaRepository;
+    // Inyectamos los 3 miniservicios expertos en lugar de los repositorios
+    private final ServicioAlojamientos servicioAlojamientos;
+    private final ServicioDisponibilidad servicioDisponibilidad;
+    private final ServicioResenas servicioResenas;
 
-    public ServicioBusqueda(AlojamientoRepository alojamientoRepository, ResenaRepository resenaRepository) {
-        this.alojamientoRepository = alojamientoRepository;
-        this.resenaRepository = resenaRepository;
+    public ServicioBusqueda(ServicioAlojamientos servicioAlojamientos, 
+                            ServicioDisponibilidad servicioDisponibilidad, 
+                            ServicioResenas servicioResenas) {
+        this.servicioAlojamientos = servicioAlojamientos;
+        this.servicioDisponibilidad = servicioDisponibilidad;
+        this.servicioResenas = servicioResenas;
     }
 
     /**
      * Coordina el caso de uso CU-02: Búsqueda de Alojamiento.
-     * Utiliza CompletableFuture para implementar el bloque concurrente 'par'.
+     * Mantiene el bloque concurrente 'par' delegando en los servicios especializados.
      */
     public ResultadoBusqueda buscar(CriterioBusqueda criterio) {
         System.out.println("[SERVICIO-BUSQUEDA] Iniciando búsqueda concurrente para destino: " + criterio.getDestino());
 
         // BLOQUE CONCURRENTE 'par' utilizando CompletableFuture
         
-        // 1. Obtener alojamientos filtrados por destino
+        // 1. HILO 1: Obtener alojamientos filtrados por destino
         CompletableFuture<List<Alojamiento>> futureAlojamientos = CompletableFuture.supplyAsync(() -> {
-            System.out.println("[PAR - HILO 1] Consultando alojamientos en " + criterio.getDestino() + "...");
-            try { Thread.sleep(60); } catch (InterruptedException ignored) {}
-            return alojamientoRepository.findByUbicacionContainingIgnoreCaseAndEstado(criterio.getDestino(), "PUBLICADO");
+            System.out.println("[PAR - HILO 1] Delegando consulta a ServicioAlojamientos...");
+            return servicioAlojamientos.filtrarPorAtributos(criterio);
         });
 
-        // 2. Obtener el rating medio de las reseñas concurrentemente
+        // 2. HILO 2: Obtener el rating medio de las reseñas concurrentemente
         CompletableFuture<Double> futureRating = CompletableFuture.supplyAsync(() -> {
-            System.out.println("[PAR - HILO 2] Consultando valoraciones medias de los alojamientos...");
-            try { Thread.sleep(60); } catch (InterruptedException ignored) {}
-            List<Resena> todasResenas = resenaRepository.findAll();
-            if (todasResenas.isEmpty()) {
-                return 4.8; // Valoración por defecto
-            }
-            return todasResenas.stream().mapToInt(Resena::getPuntuacion).average().orElse(4.8);
+            System.out.println("[PAR - HILO 2] Delegando consulta a ServicioResenas...");
+            // Pasamos null (o una lista vacía) ya que el cálculo se hace a nivel global
+            return servicioResenas.obtenerRatingMedio(null);
         });
 
-        // Unimos hilos
+        // Sincronizamos y unimos ambos hilos
         CompletableFuture.allOf(futureAlojamientos, futureRating).join();
 
         List<Alojamiento> alojamientosCandidatos = futureAlojamientos.join();
         double ratingMedio = futureRating.join();
 
-        // 3. Filtrar alojamientos por disponibilidad de fechas (Patrón Experto)
-        List<Alojamiento> alojamientosDisponibles = alojamientosCandidatos.stream()
-                .filter(aloj -> {
-                    if (aloj.getDisponibilidades() == null || aloj.getDisponibilidades().isEmpty()) {
-                        return false;
-                    }
-                    // Debe tener al menos una disponibilidad que cubra las fechas requeridas
-                    return aloj.getDisponibilidades().stream()
-                            .anyMatch(disp -> disp.isDisponible() && disp.solapaCon(criterio.getFechaEntrada(), criterio.getFechaSalida()));
-                })
-                .collect(Collectors.toList());
+        // 3. Filtrar los candidatos por disponibilidad de fechas delegando en el servicio experto
+        List<Alojamiento> alojamientosDisponibles = servicioDisponibilidad.filtrarPorDisponibilidad(alojamientosCandidatos, criterio);
 
         // 4. Inicializar Indirección/Mediador
         ResultadoBusqueda resultado = new ResultadoBusqueda();
