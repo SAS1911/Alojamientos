@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlojaGRASP — Sistema Premium de Gestión de Alojamientos</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    <header class="navbar">
+        <div class="nav-logo">
+            <span class="logo-accent">Aloja</span>GRASP
+        </div>
+        <nav class="nav-links">
+            <button class="nav-btn active" id="btn-browse" onclick="switchTab('browse')">Buscar Alojamientos</button>
+            <button class="nav-btn" id="btn-bookings" onclick="switchTab('bookings')">Mis Reservas</button>
+            <button class="nav-btn" id="btn-publish" onclick="switchTab('publish')">Publicar Anuncio</button>
+        </nav>
+        <div class="user-pill">
+            <div class="user-avatar">👤</div>
+            <div class="user-info">
+                <span class="user-role">Huésped / Anfitrión</span>
+                <span class="user-name">Juan Perez</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- SECCIÓN 1: BÚSQUEDA Y NAVEGACIÓN (CU-02) -->
+        <section id="tab-browse" class="tab-content active">
+            <div class="hero-section">
+                <h1>Encuentra tu próximo destino ideal</h1>
+                <p>Busca entre alojamientos exclusivos con confirmación de reserva y reembolso garantizado.</p>
+            </div>
+
+            <div class="search-card">
+                <form id="search-form" class="search-grid" onsubmit="performSearch(event)">
+                    <div class="input-group">
+                        <label for="search-dest">Destino</label>
+                        <input type="text" id="search-dest" placeholder="¿A dónde quieres ir? (ej. Madrid, Barcelona)" required value="Madrid">
+                    </div>
+                    <div class="input-group">
+                        <label for="search-checkin">Fecha Entrada</label>
+                        <input type="date" id="search-checkin" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="search-checkout">Fecha Salida</label>
+                        <input type="date" id="search-checkout" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="search-guests">Huéspedes</label>
+                        <input type="number" id="search-guests" min="1" max="10" value="2">
+                    </div>
+                    <button type="submit" class="btn-primary search-submit-btn">
+                        <span>🔍 Buscar</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="results-header">
+                <h2>Alojamientos Disponibles</h2>
+                <div class="rating-badge-global">
+                    ⭐ Valoración media del sistema: <span id="system-rating">4.8</span>/5.0
+                </div>
+            </div>
+
+            <div id="no-results" class="no-results-card hidden">
+                <div class="no-results-icon">🏖️</div>
+                <h3>No se encontraron alojamientos</h3>
+                <p>Prueba buscando "Madrid" o "Barcelona" y asegúrate de elegir fechas en el futuro.</p>
+            </div>
+
+            <div class="listings-grid" id="listings-container">
+                <!-- Tarjetas cargadas dinámicamente -->
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: MIS RESERVAS (CU-01 / CU-03) -->
+        <section id="tab-bookings" class="tab-content">
+            <div class="hero-section">
+                <h1>Tus Reservas y Estancias</h1>
+                <p>Consulta el estado de tus reservas activas y gestiona cancelaciones con reembolso automático en base a la política vigente.</p>
+            </div>
+
+            <div id="no-bookings" class="no-results-card">
+                <div class="no-results-icon">📅</div>
+                <h3>No tienes reservas activas</h3>
+                <p>Ve a la pestaña de búsqueda y realiza una reserva para verla aquí.</p>
+            </div>
+
+            <div class="bookings-list" id="bookings-container">
+                <!-- Reservas cargadas dinámicamente -->
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: PUBLICAR ALOJAMIENTO (CU-04) -->
+        <section id="tab-publish" class="tab-content">
+            <div class="hero-section">
+                <h1>Publica tu Alojamiento</h1>
+                <p>Registra tu propiedad en dos sencillos pasos de manera cohesionada y segura: crea el borrador con fotos y confirma su publicación.</p>
+            </div>
+
+            <div class="publish-container">
+                <!-- Paso 1: Formulario Borrador -->
+                <div class="glass-card" id="publish-step1-card">
+                    <div class="form-header">
+                        <div class="step-badge">Paso 1</div>
+                        <h3>Crear Anuncio de Borrador</h3>
+                    </div>
+                    <form id="publish-form" onsubmit="createDraft(event)">
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="pub-title">Título del Alojamiento</label>
+                                <input type="text" id="pub-title" placeholder="Ej. Precioso Chalet con Piscina y Jardín" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="pub-price">Precio por Noche (€)</label>
+                                <input type="number" id="pub-price" min="10" placeholder="Ej. 85" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="pub-location">Ubicación / Ciudad</label>
+                                <input type="text" id="pub-location" placeholder="Ej. Madrid, Barcelona, Valencia" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="pub-images">Subir Imágenes (Simulado)</label>
+                                <input type="file" id="pub-images" multiple accept="image/*">
+                                <span class="file-hint">Puedes seleccionar múltiples archivos</span>
+                            </div>
+                        </div>
+                        <div class="input-group" style="margin-top: 1rem;">
+                            <label for="pub-desc">Descripción Completa</label>
+                            <textarea id="pub-desc" rows="4" placeholder="Describe las comodidades, cercanía a transporte público, atractivos locales..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 1.5rem; width: 100%;">
+                            <span>💾 Guardar como Borrador</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Paso 2: Vista Previa y Confirmación (Flujo del CU-04) -->
+                <div class="glass-card hidden" id="publish-step2-card">
+                    <div class="form-header">
+                        <div class="step-badge success">Paso 2</div>
+                        <h3>Confirmación de Publicación</h3>
+                    </div>
+                    
+                    <div class="draft-preview">
+                        <div class="draft-preview-header">
+                            <span class="badge draft-badge">BORRADOR</span>
+                            <h4 id="preview-title">Título del Alojamiento</h4>
+                            <p class="preview-location">📍 <span id="preview-location">Ubicación</span> — <strong id="preview-price">0</strong>€ / noche</p>
+                        </div>
+                        <div class="draft-preview-body">
+                            <p id="preview-desc">Descripción...</p>
+                            <div class="preview-gallery">
+                                <h5>Imágenes Procesadas por GestorImagenes (Fabricación Pura):</h5>
+                                <ul id="preview-img-list">
+                                    <!-- URLs devueltas por el gestor de imágenes -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-actions">
+                        <button class="btn-secondary" onclick="resetPublishForm()">
+                            <span>✏️ Modificar Campos</span>
+                        </button>
+                        <button class="btn-success" id="confirm-publish-btn" onclick="publishDraft()">
+                            <span>🚀 Confirmar y Publicar Oficialmente</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL DE DETALLE / RESERVA -->
+    <div id="booking-modal" class="modal hidden">
+        <div class="modal-content glass-card animate-pop">
+            <div class="modal-close" onclick="closeModal()">×</div>
+            <div id="modal-details-container">
+                <!-- Se cargará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICACIONES -->
+    <div id="toast" class="toast hidden">
+        <span class="toast-icon">📧</span>
+        <span id="toast-message">Mensaje de notificación del sistema...</span>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <p>© 2026 AlojaGRASP. Desarrollado con ❤️ siguiendo los principios de la Arquitectura de Software y Patrones GRASP por el Grupo M.</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

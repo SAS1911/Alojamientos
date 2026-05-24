@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Custom/Large Files ###
+jdk17/
+jdk17.zip

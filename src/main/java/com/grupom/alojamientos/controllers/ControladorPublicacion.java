@@ -19,18 +19,31 @@ public class ControladorPublicacion {
         this.servicioAnuncios = servicioAnuncios;
     }
 
-    // CU-04: Crear anuncio en estado BORRADOR o PUBLICADO
+    // CU-04: Crear anuncio en estado BORRADOR
     @PostMapping
     public ResponseEntity<Alojamiento> crearAnuncio(
             @RequestParam Long anfitrionId,
             @RequestParam String titulo,
             @RequestParam String descripcion,
+            @RequestParam String ubicacion,
             @RequestParam double precio,
-            @RequestParam List<MultipartFile> imagenes) {
+            @RequestParam(required = false) List<MultipartFile> imagenes) {
         
-        // El servicio coordinará la creación del objeto y usará el GestorImagenes (Fabricación Pura)
-        // Alojamiento nuevoAnuncio = servicioAnuncios.publicar(anfitrionId, titulo, ..., imagenes);
+        System.out.println("[CONTROLADOR-PUBLICACION] Creando anuncio borrador. Anfitrión: " + anfitrionId + ", Título: " + titulo);
         
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        Alojamiento nuevoAnuncio = servicioAnuncios.publicarAlojamiento(
+                anfitrionId, titulo, descripcion, ubicacion, precio, imagenes);
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(nuevoAnuncio);
+    }
+
+    // CU-04 (Paso 2): Confirmar publicación oficial
+    @PostMapping("/{id}/confirmar")
+    public ResponseEntity<Alojamiento> confirmarAnuncio(@PathVariable Long id) {
+        System.out.println("[CONTROLADOR-PUBLICACION] Confirmando publicación para Alojamiento #" + id);
+        
+        Alojamiento publicado = servicioAnuncios.confirmarPublicacion(id);
+        
+        return ResponseEntity.ok(publicado);
     }
 }

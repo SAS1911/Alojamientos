@@ -1,0 +1,691 @@
+﻿Arquitecturas de Software — Grupo M
+
+Entrega 2
+
+Modelo de dominio, diagramas de secuencia
+
+y aplicación de patrones GRASP
+
+Sistema
+
+Sistema 5: Búsqueda de alojamiento
+
+Asignatura
+
+Arquitecturas de Software
+
+Grado
+
+Grado en Matemáticas e Informática — UPM
+
+Grupo
+
+Grupo M
+
+1. Modelo de dominio
+
+El modelo de dominio recoge los conceptos relevantes para los cuatro casos de uso del Sistema de Búsqueda de Alojamiento. Las clases conceptuales se han identificado a partir de las frases nominales de los flujos básicos y se han agrupado por categoría (roles de persona, transacciones, objetos tangibles, políticas y construcciones de búsqueda).
+
+Se excluyen artefactos software (controladores, adaptadores, DAOs) porque el modelo de dominio describe el mundo real, no la implementación.
+
+1.1. Clases conceptuales identificadas
+
+Categoría
+
+Clase conceptual
+
+CU relacionado
+
+Roles de persona
+
+Usuario, Huésped, Anfitrión
+
+CU-01/02/03/04
+
+Transacciones
+
+Reserva, Pago
+
+CU-01/03
+
+Objetos tangibles / descripción
+
+Alojamiento, ImagenAlojamiento
+
+CU-01/02/04
+
+Contenedores / líneas de transacción
+
+Disponibilidad
+
+CU-01/03/04
+
+Reglas y políticas
+
+PoliticaCancelacion
+
+CU-03
+
+Hechos / valoraciones
+
+Resena
+
+CU-02
+
+Construcciones de búsqueda
+
+CriterioBusqueda, ResultadoBusqueda
+
+CU-02
+
+1.2. Fichero PlantUML — modelo_dominio.puml
+
+El diagrama de clases UML siguiente describe el modelo de dominio completo. Se representan atributos esenciales, relaciones de asociación, composición y herencia, y multiplicidades.
+
+@startuml ModeloDominio_SistemaAlojamiento
+
+' ============================================================
+
+' MODELO DE DOMINIO — Sistema de Búsqueda de Alojamiento
+
+' ============================================================
+
+class Usuario {
+
+  idUsuario
+
+  email
+
+  nombre
+
+  apellidos
+
+}
+
+class Huesped {
+
+  metodoPagoRegistrado
+
+}
+
+class Anfitrion {
+
+  verificado
+
+}
+
+class Alojamiento {
+
+  titulo
+
+  descripcion
+
+  precio
+
+  ubicacion
+
+  amenities
+
+  estado
+
+}
+
+class ImagenAlojamiento {
+
+  url
+
+  orden
+
+}
+
+class Disponibilidad {
+
+  fechaInicio
+
+  fechaFin
+
+  bloqueado
+
+}
+
+class Reserva {
+
+  idReserva
+
+  fechaEntrada
+
+  fechaSalida
+
+  estado
+
+  fechaCreacion
+
+}
+
+class Pago {
+
+  idPago
+
+  importe
+
+  estado
+
+  fechaPago
+
+}
+
+class PoliticaCancelacion {
+
+  plazoMaximoDias
+
+  porcentajeReembolso
+
+}
+
+class Resena {
+
+  puntuacion
+
+  comentario
+
+  fecha
+
+}
+
+class ResultadoBusqueda {
+
+  criterioOrden
+
+  paginaActual
+
+  totalResultados
+
+}
+
+class CriterioBusqueda {
+
+  ciudad
+
+  fechaEntrada
+
+  fechaSalida
+
+  precioMaximo
+
+  amenitiesFiltro
+
+}
+
+' Jerarquía de usuario
+
+Usuario <|-- Huesped
+
+Usuario <|-- Anfitrion
+
+' Relaciones principales
+
+Anfitrion "1" -- "0..*" Alojamiento : publica >
+
+Alojamiento "1" *-- "1..*" ImagenAlojamiento : contiene >
+
+Alojamiento "1" *-- "1..*" Disponibilidad : tiene >
+
+Alojamiento "1" -- "1" PoliticaCancelacion : rige >
+
+Huesped "1" -- "0..*" Reserva : realiza >
+
+Reserva "1" -- "1" Alojamiento : referencia >
+
+Reserva "1" -- "0..1" Pago : pagada-mediante >
+
+Huesped "1" -- "0..*" Resena : escribe >
+
+Resena "1" -- "1" Alojamiento : valora >
+
+CriterioBusqueda "1" -- "1" ResultadoBusqueda : produce >
+
+ResultadoBusqueda "0..*" -- "0..*" Alojamiento : incluye >
+
+@enduml
+
+2. Diagramas de secuencia de diseño
+
+Los diagramas de secuencia distinguen explícitamente entre controladores, servicios de aplicación, entidades del dominio y servicios externos simulados (“fake-services”). Esta separación permite mantener continuidad entre el diseño arquitectónico y la futura implementación en Spring Boot, donde los controladores se corresponderán con clases @RestController, los servicios con @Service, las entidades con modelos de dominio persistentes y los componentes simulados con implementaciones mock o fake.
+
+2.1. CU-01 — Reserva con pago y notificación
+
+Fichero: seq_cu01_reserva.puml
+
+@startuml DiagramaSecuencia_CU01_Reserva
+
+title CU-01 — Reserva con pago y notificación (Flujo básico)
+
+actor Huesped as H
+
+participant "«controller»\nControladorReserva" as CR
+
+participant "«entity»\nAlojamiento" as A
+
+participant "«entity»\nDisponibilidad" as D
+
+participant "«entity»\nReserva" as R
+
+participant "«fake-service»\nPago" as P
+
+participant "«fake-service»\nNotificacion" as N
+
+H -> CR : solicitarReserva(idAlojamiento, fechaEntrada, fechaSalida)
+
+activate CR
+
+CR -> A : verificarExistencia(idAlojamiento)
+
+activate A
+
+A --> CR : ok
+
+deactivate A
+
+CR -> D : bloquearFechas(idAlojamiento, fechaEntrada, fechaSalida)
+
+activate D
+
+D --> CR : bloqueoConcedido
+
+deactivate D
+
+CR -> D : comprobarDisponibilidad(idAlojamiento, fechaEntrada, fechaSalida)
+
+activate D
+
+D --> CR : disponible
+
+deactivate D
+
+CR -> R : crear(idAlojamiento, idHuesped, fechaEntrada, fechaSalida)
+
+activate R
+
+R --> CR : reserva [estado=pendiente]
+
+deactivate R
+
+CR -> P : procesarCobro(reserva)
+
+activate P
+
+P --> CR : pago [estado=completado]
+
+deactivate P
+
+CR -> R : actualizarEstado(reserva, "confirmada")
+
+activate R
+
+R --> CR : ok
+
+deactivate R
+
+CR -> N : notificarConfirmacion(huesped, anfitrion, reserva)
+
+activate N
+
+N --> CR : ok
+
+deactivate N
+
+CR --> H : confirmacionReserva(reserva)
+
+deactivate CR
+
+@enduml
+
+2.2. CU-02 — Búsqueda filtrada con agregación de datos
+
+Fichero: seq_cu02_busqueda.puml
+
+Las tres consultas a ServicioAlojamientos, ServicioDisponibilidad y ServicioResenas se modelan con un bloque par para representar la concurrencia del flujo básico.
+
+@startuml DiagramaSecuencia_CU02_Busqueda
+
+title CU-02 — Búsqueda filtrada con agregación de datos (Flujo básico)
+
+actor Huesped as H
+
+participant "«controller»\nControladorBusqueda" as CB
+
+participant "«entity»\nCriterioBusqueda" as CRB
+
+participant "«fake-service»\nServicioBusqueda" as SB
+
+participant "«entity»\nResultadoBusqueda" as RB
+
+H -> CB : buscar(ciudad, fechaEntrada, fechaSalida, precioMax, amenities)
+
+activate CB
+
+CB -> CRB : validar(parametros)
+
+activate CRB
+
+CRB --> CB : criterioValidado
+
+deactivate CRB
+
+CB -> SB : buscar(criterio)
+
+activate SB
+
+SB --> CB : resultadosFiltrados
+
+deactivate SB
+
+CB -> RB : agregar(alojamientosFiltrados, alojamientosDisponibles, ratings)
+
+activate RB
+
+RB --> CB : resultadoCruzado
+
+deactivate RB
+
+CB -> RB : ordenar(resultadoCruzado, criterioOrden)
+
+activate RB
+
+RB --> CB : resultadoOrdenado
+
+deactivate RB
+
+CB --> H : listaPaginada(resultadoOrdenado)
+
+deactivate CB
+
+@enduml
+
+2.3. CU-03 — Cancelación de reserva con reembolso
+
+Fichero: seq_cu03_cancelacion.puml
+
+@startuml DiagramaSecuencia_CU03_Cancelacion
+
+title CU-03 — Cancelación de reserva con reembolso (Flujo básico)
+
+actor Huesped as H
+
+participant "«controller»\nControladorCancelacion" as CCparticipant "«entity»\nReserva" as Rparticipant "«entity»\nPoliticaCancelacion" as PCparticipant "«fake-service»\nPago" as Pparticipant "«entity»\nDisponibilidad" as Dparticipant "«fake-service»\nNotificacion" as N
+
+H -> CC : cancelarReserva(idReserva)
+
+activate CC
+
+CC -> R : verificarPropiedad(idReserva, idHuesped)
+
+activate R
+
+R --> CC : reserva [propietario ok]
+
+deactivate R
+
+CC -> PC : evaluarPolitica(reserva)
+
+activate PC
+
+PC --> CC : importeReembolso
+
+deactivate PC
+
+CC -> R : actualizarEstado(reserva, "cancelada")
+
+activate R
+
+R --> CC : ok
+
+deactivate R
+
+CC -> P : procesarReembolso(reserva, importeReembolso)
+
+activate P
+
+P --> CC : reembolso [estado=completado]
+
+deactivate P
+
+CC -> D : liberarFechas(idAlojamiento, fechaEntrada, fechaSalida)
+
+activate D
+
+D --> CC : ok
+
+deactivate D
+
+CC -> N : notificarCancelacion(huesped, anfitrion, reserva, importeReembolso)
+
+activate N
+
+N --> CC : ok
+
+deactivate N
+
+CC --> H : confirmacionCancelacion(reserva, importeReembolso)
+
+deactivate CC
+
+@enduml
+
+2.4. CU-04 — Publicación de alojamiento por anfitrión
+
+Fichero: seq_cu04_publicacion.puml
+
+El flujo incluye dos interacciones del actor (rellenar formulario y confirmar publicación) porque el caso de uso define explícitamente ese paso de confirmación antes del cambio de estado a 'publicado'.
+
+@startuml DiagramaSecuencia_CU04_Publicacion
+
+title CU-04 — Publicación de alojamiento por anfitrión (Flujo básico)
+
+actor Anfitrion as A
+
+participant "«controller»\nControladorPublicacion" as CP
+
+participant "«service»\nServicioUsuarios" as SU
+
+participant "«entity»\nAlojamiento" as AL
+
+participant "«service»\nGestorImagenes" as GI
+
+participant "«fake-service»\nServicioBusqueda" as SB
+
+participant "«fake-service»\nNotificacion" as N
+
+A -> CP : publicarAlojamiento(datosAnuncio, imagenes)
+
+activate CP
+
+CP -> SU : verificarRol(idUsuario, "anfitrion")
+
+activate SU
+
+SU --> CP : rolVerificado
+
+deactivate SU
+
+CP -> AL : validarCampos(datosAnuncio)
+
+activate AL
+
+AL --> CP : camposValidos
+
+deactivate AL
+
+CP -> GI : almacenarImagenes(imagenes)
+
+activate GI
+
+GI --> CP : urlsImagenes
+
+deactivate GI
+
+CP -> AL : crear(datosAnuncio, urlsImagenes)
+
+activate AL
+
+AL --> CP : alojamiento [estado=borrador]
+
+deactivate AL
+
+A -> CP : confirmarPublicacion(idAlojamiento)
+
+CP -> AL : actualizarEstado(idAlojamiento, "publicado")
+
+activate AL
+
+AL --> CP : ok
+
+deactivate AL
+
+CP -> SB : indexar(alojamiento)
+
+activate SB
+
+SB --> CP : ok
+
+deactivate SB
+
+CP -> N : notificarPublicacion(anfitrion, alojamiento)
+
+activate N
+
+N --> CP : ok
+
+deactivate N
+
+CP --> A : confirmacionPublicacion(alojamiento)
+
+deactivate CP
+
+@enduml
+
+3. Justificación de patrones GRASP
+
+A continuación se analiza la aplicación de los nueve patrones GRASP sobre los diagramas de secuencia. Para cada patrón aplicado se identifican hasta dos ejemplos con los objetos involucrados y la justificación de la decisión de diseño adoptada.
+
+Patrón GRASP
+
+¿Se aplica?
+
+Caso de uso
+
+Ejemplos (máx. 2). Objetos involucrados.
+
+Justificación breve
+
+Experto en información
+
+Sí
+
+CU-01, CU-03
+
+Ej. 1 (CU-01): Disponibilidad — comprobarDisponibilidad(). Ej. 2 (CU-03): PoliticaCancelacion — evaluarPolitica(). Conoce el plazo y el porcentaje de reembolso.
+
+Cada clase calcula o verifica aquello para lo que posee los datos relevantes, manteniendo el encapsulamiento.
+
+Creador
+
+Sí
+
+CU-01, CU-04
+
+Ej. 1 (CU-01): ControladorReserva crea Reserva — la agrega y registra. Ej. 2 (CU-04): ControladorPublicacion crea Alojamiento — contiene sus datos de inicialización.
+
+Se asigna la creación al objeto que agrega o registra la nueva instancia, reduciendo el acoplamiento innecesario.
+
+Controlador
+
+Sí
+
+CU-01, CU-02, CU-03, CU-04
+
+Ej. 1 (CU-01): ControladorReserva recibe solicitarReserva() del actor Huésped. Ej. 2 (CU-04): ControladorPublicacion recibe publicarAlojamiento() del actor Anfitrión.
+
+Un controlador por caso de uso coordina el flujo sin pertenecer a la capa de presentación, permitiendo interfaces conectables.
+
+Bajo acoplamiento
+
+Sí
+
+CU-02, CU-04
+
+Ej. 1 (CU-02): ControladorBusqueda delega la operación de búsqueda en ServicioBusqueda sin conocer la implementación interna del filtrado o indexación. Ej. 2 (CU-04): GestorImagenes encapsula el almacenamiento; Alojamiento no depende de cómo se persisten las imágenes.
+
+Cada objeto colabora con pocos elementos, facilitando la sustitución y el mantenimiento independiente de cada componente.
+
+Alta cohesión
+
+Sí
+
+CU-01, CU-03
+
+Ej. 1 (CU-01): Pago solo gestiona el cobro; no interviene en la lógica de reservas ni en las notificaciones. Ej. 2 (CU-03): PoliticaCancelacion solo evalúa plazos y cálculos de reembolso, sin responsabilidades ajenas.
+
+Las clases de dominio tienen responsabilidades homogéneas y centradas, lo que simplifica su comprensión y reutilización.
+
+Polimorfismo
+
+Sí
+
+CU-01, CU-03
+
+Ej. 1 (CU-01/CU-03): Notificacion abstrae el canal de envío (email, push, SMS). ControladorReserva y ControladorCancelacion llaman a notificarConfirmacion() / notificarCancelacion() sin conocer el canal concreto.
+
+Se evitan condicionales por tipo de canal; añadir un nuevo canal no requiere modificar los controladores.
+
+Fabricación pura
+
+Sí
+
+CU-04
+
+Ej. 1 (CU-04): GestorImagenes — clase artificial sin equivalente en el dominio, responsable exclusivamente del almacenamiento y recuperación de imágenes del anuncio.
+
+Delegar el almacenamiento de imágenes a Alojamiento violaría la cohesión y aumentaría su acoplamiento con la infraestructura.
+
+Indirección
+
+Sí
+
+CU-02, CU-04
+
+Ej. 1 (CU-02): ResultadoBusqueda actúa de mediador en CU-02 encapsulando el conjunto final de alojamientos encontrados y su ordenación. De esta manera, ControladorBusqueda mantiene únicamente responsabilidades de coordinación. Ej. 2 (CU-04): ServicioBusqueda actúa como intermediario entre ControladorPublicacion y el índice de búsqueda.
+
+Los objetos intermedios desacoplan al emisor del receptor, absorbiendo posibles cambios en las interfaces internas.
+
+Variaciones protegidas
+
+Sí
+
+CU-02, CU-04
+
+Ej. 1 (CU-04): GestorImagenes oculta la variabilidad del mecanismo de almacenamiento; cambiar el proveedor no afecta a Alojamiento ni al controlador. Ej. 2 (CU-02): ServicioBusqueda encapsula la lógica de búsqueda e indexación, permitiendo modificar internamente el algoritmo o tecnología utilizada sin afectar al controlador.
+
+Se identifican los puntos de variación previsibles y se encapsulan detrás de interfaces estables, protegiendo al resto del sistema.
+
+3.1. Notas de diseño
+
+Polimorfismo — Notificacion
+
+La clase Notificacion actúa como tipo abstracto para los distintos canales de comunicación (correo electrónico, notificación push, SMS). Los controladores CU-01 y CU-03 envían el mensaje notificarConfirmacion() / notificarCancelacion() sin conocer el canal concreto. La adición de un nuevo canal no requiere modificar ningún controlador, que es exactamente la motivación del patrón: evitar condicionales por tipo.
+
+Fabricación pura — GestorImagenes
+
+GestorImagenes no tiene correspondencia en el dominio real del problema. Se introduce para aislar la responsabilidad de persistir y recuperar imágenes del anuncio, que no pertenece a Alojamiento (violaría la cohesión) ni a ninguna otra clase del dominio. Es el ejemplo canónico de clase de conveniencia: alta cohesión en una única responsabilidad técnica, reutilizable por otros flujos que requieran gestión de imágenes.
+
+Indirección — ResultadoBusqueda
+
+ResultadoBusqueda actúa de mediador en CU-02: recibe los tres conjuntos de datos y realiza la agregación y el cruce. Sin este objeto, ControladorBusqueda asumiría la lógica de agregación, rompiendo su cohesión de coordinación. El intermediario absorbe también posibles cambios en el formato de los datos de cada servicio.
+
+Variaciones protegidas — GestorImagenes y ServicioResenas
+
+Se identifican dos puntos de inestabilidad previsible: (1) el proveedor de almacenamiento de imágenes puede cambiar (GestorImagenes oculta esa variación a Alojamiento y al controlador) y (2) el algoritmo de cálculo del rating puede evolucionar (ServicioResenas ofrece una interfaz getObtenerRatingMedio() estable). En ambos casos se aplica la estrategia de encapsular el punto de variación detrás de una interfaz estable, que es la definición formal de Variaciones Protegidas.
+
+Servicios simulados (“fake-services”)
+
+Los componentes Pago, Notificacion y ServicioBusqueda no forman parte de la implementación real de esta entrega. Se consideran servicios externos simulados, representados mediante implementaciones fake o mock para mantener continuidad entre los diagramas de secuencia y la futura implementación del sistema.

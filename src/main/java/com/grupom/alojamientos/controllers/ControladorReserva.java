@@ -6,6 +6,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/reservas")
 public class ControladorReserva {
@@ -24,19 +27,27 @@ public class ControladorReserva {
             @RequestParam String entrada,
             @RequestParam String salida) {
         
-        // llamarán aquí al método del diagrama de secuencia:
-        // Reserva nuevaReserva = servicioReservas.registrarReserva(alojamientoid, huespedId, ...);
+        System.out.println("[CONTROLADOR-RESERVA] Solicitud de creación de reserva. Alojamiento: " + alojamientoid + ", Huésped: " + huespedId);
         
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        Reserva nuevaReserva = servicioReservas.registrarReserva(
+                alojamientoid, huespedId, LocalDate.parse(entrada), LocalDate.parse(salida));
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(nuevaReserva);
     }
 
     // CU-03: Cancelación de Reserva y evaluación de reembolso
     @PostMapping("/{id}/cancelar")
     public ResponseEntity<Void> cancelarReserva(@PathVariable Long id) {
+        System.out.println("[CONTROLADOR-RESERVA] Solicitud de cancelación para Reserva #" + id);
         
-        // Aquí se invocará la lógica coordinada del ServicioReservas
-        // servicioReservas.procesarCancelacion(id);
+        servicioReservas.procesarCancelacion(id);
         
-        return ResponseEntity.noContent().build(); // HTTP 204
+        return ResponseEntity.ok().build(); // HTTP 200 OK
+    }
+
+    // Devuelve todas las reservas para listarlas en la SPA
+    @GetMapping("/listar")
+    public ResponseEntity<List<Reserva>> listarReservas() {
+        return ResponseEntity.ok(servicioReservas.obtenerTodas());
     }
 }
